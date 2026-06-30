@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Post-Quantum Secure Biometric Console</title>
+    {% include 'base_style.html' %}
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Post-Quantum Secure Biometric Console</h1>
+
+        <!-- Primary Tab Navigation -->
+        <div class="tabs-nav">
+            <button class="tab-btn active" onclick="switchTab('dashboard')">🎮 Biometric Scanner</button>
+            <button class="tab-btn" onclick="switchTab('templates-list'); loadTemplates();">👥 Enrolled Users</button>
+            <button class="tab-btn" onclick="switchTab('logs-list'); loadLogs();">📊 Audit Logs</button>
+            <button class="tab-btn" onclick="switchTab('management')">🛠️ System Config</button>
+        </div>
+
+        <!-- TAB 1: BIOMETRIC SCANNER -->
+        <div id="tab-dashboard" class="tab-content active">
+            <!-- Info Box -->
+            <div class="section info message-box">
+                <h3 style="border-bottom:none; margin-bottom:0; padding-bottom:0; color:#BBDEFB;">🛡️ Post-Quantum KEM & Fuzzy Extractor Binding</h3>
+                <p style="margin:8px 0 0 0; font-size:0.9em;">
+                    This system extracts features, corrects biometric noise via Reed-Solomon codes, and establishes a secure quantum-resistant session key using <strong>ML-KEM-768</strong>.
+                    You can upload image files or simulate an external USB fingerprint reader (Mantra/Morpho style).
+                </p>
+            </div>
+
+            <!-- ENROLLMENT SECTION -->
+            <div class="section">
+                <h3>➕ User Enrollment</h3>
+                <form id="enroll-form" action="/enroll" method="post" enctype="multipart/form-data">
+                    <input type="text" name="fingerprint_name" placeholder="Enter Unique Username (e.g., rajeev, abha, harsh)" required>
+
+                    <!-- Input Mode Toggle -->
+                    <div class="mode-select">
+                        <button type="button" id="enroll-btn-file" class="mode-btn active" onclick="setEnrollMode('file')">📂 Upload File</button>
+                        <button type="button" id="enroll-btn-sensor" class="mode-btn" onclick="setEnrollMode('sensor')">🔌 USB Scanner (Simulated)</button>
+                    </div>
+
+                    <!-- Enrollment Input: File -->
+                    <div id="enroll-input-file">
+                        <div class="file-input-wrapper" onclick="document.getElementById('enroll-file-input').click()">
+                            <span class="file-input-label" id="enroll-file-label">Click to select fingerprint image file...</span>
+                            <input type="file" id="enroll-file-input" name="bio" accept="image/*" onchange="updateFileLabel('enroll')">
+                        </div>
+                    </div>
+
+                    <!-- Enrollment Input: Sensor -->
+                    <div id="enroll-input-sensor" style="display: none;">
+                        <label style="font-size:0.85em; color:var(--text-muted);">Select Virtual Scanner Slot:</label>
+                        <div class="device-select-panel">
+                            <div class="device-option selected" id="enroll-finger-A" onclick="selectEnrollFinger('finger_A')">👍 Virtual Finger A</div>
+                            <div class="device-option" id="enroll-finger-B" onclick="selectEnrollFinger('finger_B')">☝️ Virtual Finger B</div>
+                        </div>
+
+                        <!-- Scanner Simulator Panel -->
+                        <div class="scanner-panel" id="enroll-scanner">
+                            <div class="scanner-glow"></div>
+                            <div class="scanner-line"></div>
+                            <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='%238E8E93'><path d='M50,15c-16.5,0-30,13.5-30,30v15c0,16.5,13.5,30,30,30s30-13.5,30-30V45C80,28.5,66.5,15,50,15z M50,21c13.2,0,24,10.8,24,24v15c0,13.2-10.8,24-24,24s-24-10.8-24-24V45C26,31.8,36.8,21,50,21z'/></svg>" class="scanner-fingerprint" id="enroll-fingerprint-preview">
+                            <span class="scanner-status-text" id="enroll-scanner-status">Scanner Ready. Click 'Scan Finger' below.</span>
+                        </div>
+                        <button type="button" class="btn" style="margin-bottom:15px; background:#444;" onclick="triggerScan('enroll')">📸 Scan Fingerprint</button>
+                        <input type="hidden" name="captured_filename" id="enroll-captured-filename">
+                    </div>
+
+                    <button type="submit" class="btn btn-success" style="margin-top:10px;">Register & Enroll Template</button>
+                </form>
+            </div>
+
+            <!-- AUTHENTICATION / IDENTIFICATION SECTION -->
+            <div class="section">
+                <h3>🔑 Authenticate & Establish Session Key</h3>
+                <form id="auth-form" action="/authenticate" method="post" enctype="multipart/form-data">
+                    
+                    <!-- Verification Type Selector -->
+                    <div style="margin-bottom: 20px;">
+                        <label style="font-size:0.9em; font-weight:600; color:var(--text-muted);">Verification Mode:</label>
+                        <select id="auth-type-select" onchange="toggleAuthType()" style="margin-top: 5px;">
+                            <option value="1n">🔍 1:N Identification (Database Search)</option>
+                            <option value="11">👤 1:1 Verification (Verify Specific Username)</option>
+                        </select>
+                    </div>
+
+                    <!-- Username input for 1:1 verification (hidden by default) -->
+                    <div id="username-verify-container" style="display: none; margin-bottom: 20px;">
+                        <label style="font-size:0.9em; font-weight:600; color:var(--text-muted);">Username to Verify:</label>
+                        <input type="text" name="username_to_verify" id="username_to_verify" placeholder="Enter Username (e.g., rajeev)" style="margin-top: 5px;">
+                    </div>
+
+                    <!-- Input Mode Toggle -->
+                    <div class="mode-select">
+                        <button type="button" id="auth-btn-file" class="mode-btn active" onclick="setAuthMode('file')">📂 Upload File</button>
+                        <button type="button" id="auth-btn-sensor" class="mode-btn" onclick="setAuthMode('sensor')">🔌 USB Scanner (Simulated)</button>
+                    </div>
+
+                    <!-- Auth Input: File -->
+                    <div id="auth-input-file">
+                        <div class="file-input-wrapper" onclick="document.getElementById('auth-file-input').click()">
+                            <span class="file-input-label" id="auth-file-label">Click to select fingerprint image file...</span>
+                            <input type="file" id="auth-file-input" name="bio" accept="image/*" onchange="updateFileLabel('auth')">
+                        </div>
+                    </div>
+
+                    <!-- Auth Input: Sensor -->
+                    <div id="auth-input-sensor" style="display: none;">
+                        <label style="font-size:0.85em; color:var(--text-muted);">Select Finger to Scan:</label>
+                        <div class="device-select-panel">
+                            <div class="device-option selected" id="auth-finger-A" onclick="selectAuthFinger('finger_A')">👍 Virtual Finger A</div>
+                            <div class="device-option" id="auth-finger-B" onclick="selectAuthFinger('finger_B')">☝️ Virtual Finger B</div>
+                        </div>
+
+                        <!-- Scanner Simulator Panel -->
+                        <div class="scanner-panel" id="auth-scanner">
+                            <div class="scanner-glow"></div>
+                            <div class="scanner-line"></div>
+                            <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='%238E8E93'><path d='M50,15c-16.5,0-30,13.5-30,30v15c0,16.5,13.5,30,30,30s30-13.5,30-30V45C80,28.5,66.5,15,50,15z M50,21c13.2,0,24,10.8,24,24v15c0,13.2-10.8,24-24,24s-24-10.8-24-24V45C26,31.8,36.8,21,50,21z'/></svg>" class="scanner-fingerprint" id="auth-fingerprint-preview">
+                            <span class="scanner-status-text" id="auth-scanner-status">Scanner Ready. Click 'Scan Finger' below.</span>
+                        </div>
+                        <button type="button" class="btn" style="margin-bottom:15px; background:#444;" onclick="triggerScan('auth')">📸 Scan Fingerprint</button>
+                        <input type="hidden" name="captured_filename" id="auth-captured-filename">
+                    </div>
+
+                    <button type="submit" class="btn" style="margin-top:10px;">Identify & Verify PQC Session</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- TAB 2: ENROLLED USERS -->
+        <div id="tab-templates-list" class="tab-content">
+            <div class="section">
+                <h3>👥 Registered Biometric Identities</h3>
+                <p style="font-size:0.85em; color:var(--text-muted); margin-bottom:15px;">These identities are stored in the SQLite database and include their respective post-quantum KEM keypairs.</p>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Feature Length</th>
+                                <th>Confidence</th>
+                                <th>Enrollment Timestamp</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="templates-tbody">
+                            <tr><td colspan="5" style="text-align:center;">Loading enrolled templates...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: AUDIT LOGS -->
+        <div id="tab-logs-list" class="tab-content">
+            <div class="section">
+                <h3>📊 Biometric Audit & PQC Handshake Logs</h3>
+                <p style="font-size:0.85em; color:var(--text-muted); margin-bottom:15px;">Historical record of biometric authentication logs.</p>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>User Name</th>
+                                <th>Verification</th>
+                                <th>Confidence Score</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logs-tbody">
+                            <tr><td colspan="5" style="text-align:center;">Loading audit logs...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: SYSTEM CONFIG & RESET -->
+        <div id="tab-management" class="tab-content">
+            <div class="section">
+                <h3>🛠️ Quality Threshold Configuration</h3>
+                <p style="font-size:0.85em; color:var(--text-muted); margin-bottom:20px;">Tuned parameters for biometric validation under standard conditions.</p>
+                <div class="thresholds">
+                    <div><strong>Overall Quality Match:</strong> ≥ {{ thresholds.overall_score }}</div>
+                    <div><strong>Minutiae Threshold:</strong> ≥ {{ thresholds.minutiae_count }} points</div>
+                    <div><strong>Orientation Consistency:</strong> ≥ {{ thresholds.orientation_consistency }}</div>
+                    <div><strong>Ridge Density:</strong> ≥ {{ thresholds.ridge_density }}</div>
+                    <div><strong>Contrast Ratio:</strong> ≥ {{ thresholds.contrast_ratio }}</div>
+                    <div><strong>Frequency Score:</strong> ≥ {{ thresholds.frequency_score }}</div>
+                    <div><strong>Ridge Flow Continuity:</strong> ≥ {{ thresholds.ridge_flow_continuity }}</div>
+                    <div><strong>Cryptographic Verification:</strong> Enforced</div>
+                </div>
+            </div>
+
+            <div class="section" style="border-color: rgba(244, 67, 54, 0.3);">
+                <h3 style="color:var(--danger-color); border-bottom-color: rgba(244, 67, 54, 0.3);">⚠️ Factory Reset System Database</h3>
+                <p style="font-size:0.9em; margin-bottom:20px;">
+                    This action will **completely wipe the SQLite database**, deleting all enrolled fingerprint templates, PQC cryptographic key pairs, and authentication audit logs. This cannot be undone.
+                </p>
+                <button type="button" class="btn btn-danger" onclick="resetDatabase()">Wipe Database & Reset System</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Tab switching logic
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // Set active button
+            event.target.classList.add('active');
+            
+            // Set active content panel
+            document.getElementById('tab-' + tabId).classList.add('active');
+        }
+
+        // Enrollment modes
+        let enrollMode = 'file';
+        let enrollSelectedFinger = 'finger_A';
+
+        function setEnrollMode(mode) {
+            enrollMode = mode;
+            document.getElementById('enroll-btn-file').classList.toggle('active', mode === 'file');
+            document.getElementById('enroll-btn-sensor').classList.toggle('active', mode === 'sensor');
+            document.getElementById('enroll-input-file').style.display = mode === 'file' ? 'block' : 'none';
+            document.getElementById('enroll-input-sensor').style.display = mode === 'sensor' ? 'block' : 'none';
+            
+            // Toggle required attributes
+            document.getElementById('enroll-file-input').required = (mode === 'file');
+        }
+
+        function selectEnrollFinger(finger) {
+            enrollSelectedFinger = finger;
+            document.getElementById('enroll-finger-A').classList.toggle('selected', finger === 'finger_A');
+            document.getElementById('enroll-finger-B').classList.toggle('selected', finger === 'finger_B');
+        }
+
+        // Authentication modes
+        let authMode = 'file';
+        let authSelectedFinger = 'finger_A';
+
+        function setAuthMode(mode) {
+            authMode = mode;
+            document.getElementById('auth-btn-file').classList.toggle('active', mode === 'file');
+            document.getElementById('auth-btn-sensor').classList.toggle('active', mode === 'sensor');
+            document.getElementById('auth-input-file').style.display = mode === 'file' ? 'block' : 'none';
+            document.getElementById('auth-input-sensor').style.display = mode === 'sensor' ? 'block' : 'none';
+            
+            // Toggle required attributes
+            document.getElementById('auth-file-input').required = (mode === 'file');
+        }
+
+        function selectAuthFinger(finger) {
+            authSelectedFinger = finger;
+            document.getElementById('auth-finger-A').classList.toggle('selected', finger === 'finger_A');
+            document.getElementById('auth-finger-B').classList.toggle('selected', finger === 'finger_B');
+        }
+
+        // Update file name label
+        function updateFileLabel(type) {
+            const input = document.getElementById(type + '-file-input');
+            const label = document.getElementById(type + '-file-label');
+            if (input.files && input.files[0]) {
+                label.textContent = "Selected: " + input.files[0].name;
+            } else {
+                label.textContent = "Click to select fingerprint image file...";
+            }
+        }
+
+        // Simulator scanning logic
+        function triggerScan(type) {
+            const panel = document.getElementById(type + '-scanner');
+            const status = document.getElementById(type + '-scanner-status');
+            const preview = document.getElementById(type + '-fingerprint-preview');
+            const filenameInput = document.getElementById(type + '-captured-filename');
+            const selectedFinger = (type === 'enroll') ? enrollSelectedFinger : authSelectedFinger;
+
+            panel.classList.add('scanning');
+            status.textContent = "Scanning... Placing finger on USB reader.";
+            preview.style.opacity = 0.25;
+
+            // Trigger the backend mock generator
+            fetch('/sensor/capture', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ finger_id: selectedFinger })
+            })
+            .then(res => res.json())
+            .then(data => {
+                // Wait 2.5 seconds to complete scan line animation
+                setTimeout(() => {
+                    panel.classList.remove('scanning');
+                    if (data.success) {
+                        status.textContent = "Scan complete! Image captured.";
+                        preview.src = data.image_url;
+                        preview.style.opacity = 0.85;
+                        preview.style.filter = "drop-shadow(0 0 8px #4CAF50)";
+                        filenameInput.value = data.filename;
+                    } else {
+                        status.textContent = "Capture failed: " + data.error;
+                    }
+                }, 2500);
+            })
+            .catch(err => {
+                setTimeout(() => {
+                    panel.classList.remove('scanning');
+                    status.textContent = "Error communicating with sensor backend.";
+                }, 2500);
+            });
+        }
+
+        // Dynamic Loading of enrolled templates
+        function loadTemplates() {
+            fetch('/fingerprints')
+            .then(res => res.json())
+            .then(data => {
+                const tbody = document.getElementById('templates-tbody');
+                if (data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">No enrolled templates in SQLite database.</td></tr>`;
+                    return;
+                }
+                tbody.innerHTML = '';
+                data.forEach(fp => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><strong>${fp.fingerprint_name}</strong></td>
+                            <td><code>${fp.feature_length} bytes</code></td>
+                            <td>${(fp.fingerprint_confidence_at_enrollment * 100).toFixed(0)}%</td>
+                            <td>${fp.enrollment_timestamp_human}</td>
+                            <td>
+                                <button type="button" class="btn btn-danger" style="padding: 5px 10px; font-size: 0.8em; margin: 0;" onclick="deleteFingerprint('${fp.fingerprint_name}')">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            })
+            .catch(err => {
+                document.getElementById('templates-tbody').innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--danger-color);">Error loading templates.</td></tr>`;
+            });
+        }
+
+        // Dynamic Loading of logs
+        function loadLogs() {
+            fetch('/logs')
+            .then(res => res.json())
+            .then(data => {
+                const tbody = document.getElementById('logs-tbody');
+                if (data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">No logs recorded.</td></tr>`;
+                    return;
+                }
+                tbody.innerHTML = '';
+                data.forEach(log => {
+                    const statusSpan = log.success 
+                        ? `<span style="color:var(--primary-color); font-weight:bold;">✓ SUCCESS</span>` 
+                        : `<span style="color:var(--danger-color); font-weight:bold;">✗ FAILED</span>`;
+                    tbody.innerHTML += `
+                        <tr>
+                            <td style="font-size:0.85em; color:var(--text-muted);">${log.timestamp_human}</td>
+                            <td><strong>${log.fingerprint_name}</strong></td>
+                            <td>${statusSpan}</td>
+                            <td>${(log.confidence_score * 100).toFixed(0)}%</td>
+                            <td style="font-size:0.85em; max-width: 250px; word-break: break-all;">${log.match_details}</td>
+                        </tr>
+                    `;
+                });
+            })
+            .catch(err => {
+                document.getElementById('logs-tbody').innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--danger-color);">Error loading audit logs.</td></tr>`;
+            });
+        }
+
+        // Delete Fingerprint Ajax
+        function deleteFingerprint(name) {
+            if (confirm("Are you sure you want to delete template for user '" + name + "'?")) {
+                fetch('/delete_fingerprint/' + name)
+                .then(() => {
+                    loadTemplates();
+                });
+            }
+        }
+
+        // Factory Reset Database Ajax
+        function resetDatabase() {
+            if (confirm("⚠️ WARNING: Are you absolutely sure you want to wipe the database?\nThis will clear all enrolled users, PQC key pairs, and handshake logs!")) {
+                fetch('/clear_database', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        window.location.reload();
+                    } else {
+                        alert("Error: " + data.error);
+                    }
+                })
+                .catch(err => {
+                    alert("Error resetting database.");
+                });
+            }
+        }
+
+        // Toggle 1:1 vs 1:N authentication UI inputs
+        function toggleAuthType() {
+            const select = document.getElementById('auth-type-select');
+            const container = document.getElementById('username-verify-container');
+            const input = document.getElementById('username_to_verify');
+            
+            if (select.value === '11') {
+                container.style.display = 'block';
+                input.required = true;
+                input.focus();
+            } else {
+                container.style.display = 'none';
+                input.required = false;
+                input.value = '';
+            }
+        }
+    </script>
+</body>
+</html>

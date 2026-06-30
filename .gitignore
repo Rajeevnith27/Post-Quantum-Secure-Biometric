@@ -1,0 +1,24 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Databases and local configuration
+database/
+*.db
+
+# Temporary fingerprint uploads
+uploads/*.png
+uploads/*.jpg
+uploads/*.jpeg
+debug_aligned_images/
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# IDE files
+.vscode/
+.idea/
+.DS_Store
