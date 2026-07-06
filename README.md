@@ -1,4 +1,4 @@
-# Post-Quantum Biometric Fuzzy Extractor
+# PQC Authentication (Post-Quantum Biometric Fuzzy Extractor)
 
 A Zero-Knowledge Biometric authentication system implementing a **Biometric Fuzzy Extractor** coupled with **ML-KEM-768** (FIPS 203 standardized) Post-Quantum Cryptography (PQC) and 360-degree rotation-invariant matching.
 
