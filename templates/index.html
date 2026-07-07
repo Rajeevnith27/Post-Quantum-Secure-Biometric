@@ -37,6 +37,7 @@
                     <div class="mode-select">
                         <button type="button" id="enroll-btn-file" class="mode-btn active" onclick="setEnrollMode('file')">📂 Upload File</button>
                         <button type="button" id="enroll-btn-sensor" class="mode-btn" onclick="setEnrollMode('sensor')">🔌 USB Scanner (Simulated)</button>
+                        <button type="button" id="enroll-btn-webauthn" class="mode-btn" onclick="setEnrollMode('webauthn')">💻 Device Sensor (Touch ID)</button>
                     </div>
 
                     <!-- Enrollment Input: File -->
@@ -64,6 +65,12 @@
                         </div>
                         <button type="button" class="btn" style="margin-bottom:15px; background:#444;" onclick="triggerScan('enroll')">📸 Scan Fingerprint</button>
                         <input type="hidden" name="captured_filename" id="enroll-captured-filename">
+                    </div>
+
+                    <!-- Enrollment Input: WebAuthn Touch ID -->
+                    <div id="enroll-input-webauthn" style="display: none; text-align: center; padding: 15px 0;">
+                        <button type="button" class="btn" style="background:#2B6CB0; font-weight:600; padding:12px 20px;" onclick="triggerDeviceBiometrics('enroll')">🔑 Scan via Device Touch ID</button>
+                        <div style="font-size:0.85em; color:var(--text-muted); margin-top:10px;" id="enroll-webauthn-status">Ready for Touch ID prompt.</div>
                     </div>
 
                     <button type="submit" class="btn btn-success" style="margin-top:10px;">Register & Enroll Template</button>
@@ -94,6 +101,7 @@
                     <div class="mode-select">
                         <button type="button" id="auth-btn-file" class="mode-btn active" onclick="setAuthMode('file')">📂 Upload File</button>
                         <button type="button" id="auth-btn-sensor" class="mode-btn" onclick="setAuthMode('sensor')">🔌 USB Scanner (Simulated)</button>
+                        <button type="button" id="auth-btn-webauthn" class="mode-btn" onclick="setAuthMode('webauthn')">💻 Device Sensor (Touch ID)</button>
                     </div>
 
                     <!-- Auth Input: File -->
@@ -121,6 +129,12 @@
                         </div>
                         <button type="button" class="btn" style="margin-bottom:15px; background:#444;" onclick="triggerScan('auth')">📸 Scan Fingerprint</button>
                         <input type="hidden" name="captured_filename" id="auth-captured-filename">
+                    </div>
+
+                    <!-- Authentication Input: WebAuthn Touch ID -->
+                    <div id="auth-input-webauthn" style="display: none; text-align: center; padding: 15px 0;">
+                        <button type="button" class="btn" style="background:#2B6CB0; font-weight:600; padding:12px 20px;" onclick="triggerDeviceBiometrics('auth')">🔑 Verify via Device Touch ID</button>
+                        <div style="font-size:0.85em; color:var(--text-muted); margin-top:10px;" id="auth-webauthn-status">Ready for Touch ID verification.</div>
                     </div>
 
                     <button type="submit" class="btn" style="margin-top:10px;">Identify & Verify PQC Session</button>
@@ -225,8 +239,10 @@
             enrollMode = mode;
             document.getElementById('enroll-btn-file').classList.toggle('active', mode === 'file');
             document.getElementById('enroll-btn-sensor').classList.toggle('active', mode === 'sensor');
+            document.getElementById('enroll-btn-webauthn').classList.toggle('active', mode === 'webauthn');
             document.getElementById('enroll-input-file').style.display = mode === 'file' ? 'block' : 'none';
             document.getElementById('enroll-input-sensor').style.display = mode === 'sensor' ? 'block' : 'none';
+            document.getElementById('enroll-input-webauthn').style.display = mode === 'webauthn' ? 'block' : 'none';
             
             // Toggle required attributes
             document.getElementById('enroll-file-input').required = (mode === 'file');
@@ -246,8 +262,10 @@
             authMode = mode;
             document.getElementById('auth-btn-file').classList.toggle('active', mode === 'file');
             document.getElementById('auth-btn-sensor').classList.toggle('active', mode === 'sensor');
+            document.getElementById('auth-btn-webauthn').classList.toggle('active', mode === 'webauthn');
             document.getElementById('auth-input-file').style.display = mode === 'file' ? 'block' : 'none';
             document.getElementById('auth-input-sensor').style.display = mode === 'sensor' ? 'block' : 'none';
+            document.getElementById('auth-input-webauthn').style.display = mode === 'webauthn' ? 'block' : 'none';
             
             // Toggle required attributes
             document.getElementById('auth-file-input').required = (mode === 'file');
@@ -309,6 +327,80 @@
                     panel.classList.remove('scanning');
                     status.textContent = "Error communicating with sensor backend.";
                 }, 2500);
+            });
+        }
+
+        // WebAuthn device biometrics integration (Mac Touch ID / Phone)
+        function triggerDeviceBiometrics(type) {
+            const statusLabel = document.getElementById(type + '-webauthn-status');
+            const filenameInput = document.getElementById(type + '-captured-filename');
+            
+            statusLabel.innerHTML = "<span style='color:var(--primary-color); font-weight:bold;'>Waiting for physical Touch ID scan...</span>";
+            
+            // WebAuthn request options
+            const challenge = new Uint8Array([11, 22, 33, 44, 55, 66, 77, 88]); // Static/Random challenge
+            const rpId = window.location.hostname;
+            
+            const options = {
+                publicKey: {
+                    challenge: challenge,
+                    rp: { name: "PQC Biometric System", id: rpId },
+                    user: {
+                        id: new Uint8Array([1, 2, 3, 4]),
+                        name: "device_biometric_user",
+                        displayName: "Device Biometric User"
+                    },
+                    pubKeyCredParams: [{ alg: -7, type: "public-key" }], // ES256
+                    authenticatorSelection: {
+                        authenticatorAttachment: "platform", // Enforces local Touch ID / Face ID
+                        userVerification: "required"
+                    },
+                    timeout: 60000
+                }
+            };
+            
+            // Run native prompt
+            let promise;
+            if (type === 'enroll') {
+                promise = navigator.credentials.create(options);
+            } else {
+                promise = navigator.credentials.get({
+                    publicKey: {
+                        challenge: challenge,
+                        rpId: rpId,
+                        userVerification: "required"
+                    }
+                });
+            }
+            
+            promise.then(credential => {
+                statusLabel.innerHTML = "<span style='color:#00ff66;'>Touch ID scan successful! Linking cryptosystem...</span>";
+                
+                // Use the unique Credential ID as the stable fingerprint ID seed
+                const rawId = credential.id;
+                
+                // Fetch the backend simulated template generation using the webauthn id
+                fetch('/sensor/capture', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ finger_id: 'webauthn_' + rawId })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        statusLabel.innerHTML = "<span style='color:#00ff66;'>Successfully linked Touch ID to system! Click submit below.</span>";
+                        filenameInput.value = data.filename;
+                    } else {
+                        statusLabel.innerHTML = "<span style='color:var(--danger-color);'>Linking failed: " + data.error + "</span>";
+                    }
+                })
+                .catch(err => {
+                    statusLabel.innerHTML = "<span style='color:var(--danger-color);'>Error connecting to server.</span>";
+                });
+            })
+            .catch(err => {
+                statusLabel.innerHTML = "<span style='color:var(--danger-color);'>Touch ID prompt canceled or unsupported.</span>";
+                console.error("WebAuthn error:", err);
             });
         }
 

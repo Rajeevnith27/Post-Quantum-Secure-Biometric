@@ -396,6 +396,10 @@ def sensor_capture():
             seed_val = 2000
         elif finger_id == 'finger_C':
             seed_val = 3000
+        elif finger_id.startswith('webauthn_'):
+            import hashlib
+            seed_bytes = hashlib.sha256(finger_id.encode('utf-8')).digest()
+            seed_val = int.from_bytes(seed_bytes[:4], byteorder='big') % 1000000
         else:
             seed_val = int(time.time()) % 10000
 

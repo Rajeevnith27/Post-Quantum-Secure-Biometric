@@ -22,8 +22,3 @@ env/
 .vscode/
 .idea/
 .DS_Store
-
-# Research papers and guide documents (exclude from GitHub)
-Biometric_Fuzzy_Extractor_Guide.*
-PQC_Biometric_Research_Paper.*
-biometric_pqc_diagram.png
