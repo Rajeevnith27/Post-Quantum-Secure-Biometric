@@ -4,5 +4,5 @@ opencv-python-headless>=4.5.0
 scikit-image>=0.18.0
 reedsolo>=1.5.0
 reportlab>=3.6.0
-mlkem>=0.1.0
+mlkem>=0.0.3
 gunicorn>=21.0.0
