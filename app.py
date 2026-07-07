@@ -231,7 +231,7 @@ def authenticate():
                                        message=f"The username '{username_to_verify}' does not exist in the database. Please enroll first.",
                                        back_url='/',
                                        back_text='Try Again')
-            enrolled_fingerprint_names = [username_to_verify]
+            enrolled_fingerprint_names = [user_template['fingerprint_name']]
         else:
             enrolled_fingerprint_names = db.get_all_fingerprint_names()
 

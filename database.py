@@ -122,7 +122,7 @@ class BiometricDatabase:
             SELECT fingerprint_name, helper_data, verification_hash, seed, feature_length,
                    codeword_length, pqc_public_key, pqc_private_key,
                    fingerprint_confidence, fingerprint_analysis, enrollment_timestamp
-            FROM fingerprints WHERE fingerprint_name = ?
+            FROM fingerprints WHERE LOWER(fingerprint_name) = LOWER(?)
         ''', (fingerprint_name,))
         row = cursor.fetchone()
         if not row:
