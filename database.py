@@ -3,13 +3,41 @@ import sqlite3
 import json
 import time
 
+try:
+    import psycopg2
+    HAS_POSTGRES = True
+except ImportError:
+    HAS_POSTGRES = False
+
 class BiometricDatabase:
     """
-    SQLite database for storing fingerprints and authentication logs with persistence.
+    Biometric database supporting local SQLite and cloud-hosted PostgreSQL (Render.com).
+    Enforces Zero-Knowledge biometric template protection by purging raw features.
     """
     def __init__(self, db_path='database/biometrics.db'):
         self.db_path = db_path
-        db_dir = os.path.dirname(db_path)
+        self.db_url = os.environ.get("DATABASE_URL")
+        self.is_postgres = False
+
+        if self.db_url and HAS_POSTGRES:
+            try:
+                # Convert postgres:// to postgresql:// if needed for newer psycopg2 versions
+                url = self.db_url
+                if url.startswith("postgres://"):
+                    url = url.replace("postgres://", "postgresql://", 1)
+                self.conn = psycopg2.connect(url)
+                self.is_postgres = True
+                print("Database Status: Connected to persistent PostgreSQL Cloud database.")
+            except Exception as e:
+                print(f"Warning: Failed to connect to PostgreSQL ({e}). Falling back to local SQLite.")
+                self._connect_sqlite()
+        else:
+            self._connect_sqlite()
+
+        self.create_tables()
+
+    def _connect_sqlite(self):
+        db_dir = os.path.dirname(self.db_path)
         if db_dir:
             os.makedirs(db_dir, exist_ok=True)
 
@@ -29,54 +57,95 @@ class BiometricDatabase:
             except Exception as e:
                 print(f"Warning: Failed to delete legacy JSON logs '{old_logs_json}': {e}")
 
-        # Connect to SQLite database
-        self.conn = sqlite3.connect(self.conn_str(), check_same_thread=False)
-        self.create_tables()
+        self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        self.is_postgres = False
+        print("Database Status: Connected to local SQLite database.")
 
-    def conn_str(self):
-        return self.db_path
+    def _execute(self, query, params=()):
+        """Helper to run queries with the correct placeholder (? for SQLite, %s for Postgres)."""
+        cursor = self.conn.cursor()
+        if self.is_postgres:
+            query = query.replace('?', '%s')
+        cursor.execute(query, params)
+        return cursor
+
+    def _binary(self, data):
+        """Helper to wrap binary data for safe SQL injection based on database type."""
+        if data is None:
+            return None
+        if self.is_postgres:
+            return psycopg2.Binary(data)
+        else:
+            return sqlite3.Binary(data)
 
     def create_tables(self):
         """Creates fingerprints and authentication logs tables if they don't exist."""
         cursor = self.conn.cursor()
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS fingerprints (
-                fingerprint_name TEXT PRIMARY KEY,
-                helper_data BLOB,
-                verification_hash BLOB,
-                seed BLOB,
-                feature_length INTEGER,
-                codeword_length INTEGER,
-                pqc_public_key BLOB,
-                pqc_private_key BLOB,
-                fingerprint_confidence REAL,
-                fingerprint_analysis TEXT,
-                enrollment_timestamp REAL
-            )
-        ''')
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS auth_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                timestamp REAL,
-                fingerprint_name TEXT,
-                success INTEGER, -- 1 for success, 0 for failure
-                confidence_score REAL,
-                quality_score REAL,
-                match_details TEXT
-            )
-        ''')
+        if self.is_postgres:
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS fingerprints (
+                    fingerprint_name VARCHAR(255) PRIMARY KEY,
+                    helper_data BYTEA,
+                    verification_hash BYTEA,
+                    seed BYTEA,
+                    feature_length INTEGER,
+                    codeword_length INTEGER,
+                    pqc_public_key BYTEA,
+                    pqc_private_key BYTEA,
+                    fingerprint_confidence REAL,
+                    fingerprint_analysis TEXT,
+                    enrollment_timestamp REAL
+                )
+            ''')
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS auth_logs (
+                    id SERIAL PRIMARY KEY,
+                    timestamp REAL,
+                    fingerprint_name VARCHAR(255),
+                    success INTEGER, -- 1 for success, 0 for failure
+                    confidence_score REAL,
+                    quality_score REAL,
+                    match_details TEXT
+                )
+            ''')
+        else:
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS fingerprints (
+                    fingerprint_name TEXT PRIMARY KEY,
+                    helper_data BLOB,
+                    verification_hash BLOB,
+                    seed BLOB,
+                    feature_length INTEGER,
+                    codeword_length INTEGER,
+                    pqc_public_key BLOB,
+                    pqc_private_key BLOB,
+                    fingerprint_confidence REAL,
+                    fingerprint_analysis TEXT,
+                    enrollment_timestamp REAL
+                )
+            ''')
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS auth_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp REAL,
+                    fingerprint_name TEXT,
+                    success INTEGER, -- 1 for success, 0 for failure
+                    confidence_score REAL,
+                    quality_score REAL,
+                    match_details TEXT
+                )
+            ''')
         self.conn.commit()
 
     def clear_all_data(self):
         """Wipes all enrolled fingerprints and authentication logs from the database."""
-        cursor = self.conn.cursor()
-        cursor.execute('DELETE FROM fingerprints')
-        cursor.execute('DELETE FROM auth_logs')
+        self._execute('DELETE FROM fingerprints')
+        self._execute('DELETE FROM auth_logs')
         self.conn.commit()
         print("Database Reset: All templates and logs cleared successfully.")
 
     def enroll_fingerprint(self, fingerprint_name, helper_data, verification_hash, seed, feature_length, fingerprint_confidence, fingerprint_analysis, codeword_length, pqc_public_key, pqc_private_key):
-        """Adds a new fingerprint template to the SQLite database."""
+        """Adds a new fingerprint template to the database."""
         if not isinstance(fingerprint_name, str) or not fingerprint_name.strip():
             raise TypeError("fingerprint_name must be a non-empty string.")
         
@@ -93,8 +162,7 @@ class BiometricDatabase:
         if not isinstance(fingerprint_confidence, (float, int)) or not isinstance(fingerprint_analysis, dict):
             raise TypeError("fingerprint_confidence must be a number and fingerprint_analysis a dict.")
 
-        cursor = self.conn.cursor()
-        cursor.execute('''
+        self._execute('''
             INSERT INTO fingerprints (
                 fingerprint_name, helper_data, verification_hash, seed, feature_length,
                 codeword_length, pqc_public_key, pqc_private_key,
@@ -102,13 +170,13 @@ class BiometricDatabase:
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             fingerprint_name,
-            sqlite3.Binary(helper_data),
-            sqlite3.Binary(verification_hash),
-            sqlite3.Binary(seed),
+            self._binary(helper_data),
+            self._binary(verification_hash),
+            self._binary(seed),
             feature_length,
             codeword_length,
-            sqlite3.Binary(pqc_public_key),
-            sqlite3.Binary(pqc_private_key),
+            self._binary(pqc_public_key),
+            self._binary(pqc_private_key),
             float(fingerprint_confidence),
             json.dumps(fingerprint_analysis),
             time.time()
@@ -117,8 +185,7 @@ class BiometricDatabase:
 
     def get_fingerprint_template(self, fingerprint_name):
         """Retrieves a fingerprint template by name, reconstructing bytes and dicts."""
-        cursor = self.conn.cursor()
-        cursor.execute('''
+        cursor = self._execute('''
             SELECT fingerprint_name, helper_data, verification_hash, seed, feature_length,
                    codeword_length, pqc_public_key, pqc_private_key,
                    fingerprint_confidence, fingerprint_analysis, enrollment_timestamp
@@ -128,6 +195,7 @@ class BiometricDatabase:
         if not row:
             return None
 
+        # psycopg2 returns bytes/memoryviews directly for bytea columns
         return {
             'fingerprint_name': row[0],
             'helper_data': bytes(row[1]),
@@ -144,15 +212,13 @@ class BiometricDatabase:
 
     def get_all_fingerprint_names(self):
         """Returns a list of all enrolled fingerprint names."""
-        cursor = self.conn.cursor()
-        cursor.execute('SELECT fingerprint_name FROM fingerprints')
+        cursor = self._execute('SELECT fingerprint_name FROM fingerprints')
         rows = cursor.fetchall()
         return [row[0] for row in rows]
 
     def get_all_auth_logs(self):
         """Returns all stored authentication logs."""
-        cursor = self.conn.cursor()
-        cursor.execute('''
+        cursor = self._execute('''
             SELECT timestamp, fingerprint_name, success, confidence_score, quality_score, match_details
             FROM auth_logs ORDER BY id ASC
         ''')
@@ -170,9 +236,8 @@ class BiometricDatabase:
         return logs
 
     def add_auth_log(self, fingerprint_name, success, confidence_score, quality_score, details):
-        """Adds an entry to the authentication log in SQLite."""
-        cursor = self.conn.cursor()
-        cursor.execute('''
+        """Adds an entry to the authentication log."""
+        self._execute('''
             INSERT INTO auth_logs (timestamp, fingerprint_name, success, confidence_score, quality_score, match_details)
             VALUES (?, ?, ?, ?, ?, ?)
         ''', (
@@ -187,8 +252,7 @@ class BiometricDatabase:
 
     def get_safe_fingerprint_list(self):
         """Returns enrolled fingerprints, omitting sensitive data for display."""
-        cursor = self.conn.cursor()
-        cursor.execute('SELECT fingerprint_name, feature_length, fingerprint_confidence, enrollment_timestamp FROM fingerprints')
+        cursor = self._execute('SELECT fingerprint_name, feature_length, fingerprint_confidence, enrollment_timestamp FROM fingerprints')
         rows = cursor.fetchall()
         safe_list = []
         for row in rows:
@@ -202,7 +266,6 @@ class BiometricDatabase:
 
     def delete_fingerprint(self, fingerprint_name):
         """Deletes a fingerprint template by name."""
-        cursor = self.conn.cursor()
-        cursor.execute('DELETE FROM fingerprints WHERE fingerprint_name = ?', (fingerprint_name,))
+        cursor = self._execute('DELETE FROM fingerprints WHERE fingerprint_name = ?', (fingerprint_name,))
         self.conn.commit()
         return cursor.rowcount > 0
