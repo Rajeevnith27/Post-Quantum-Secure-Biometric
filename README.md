@@ -52,3 +52,11 @@ You can run the end-to-end verification script to automatically check SQLite mig
 ```bash
 python scratch/verify_all.py
 ```
+
+---
+
+## 📄 License & Copyright
+
+&copy; 2026 Rajeev Ranjan, NIT Hamirpur. All Rights Reserved.
+Licensed under the MIT License.
+
