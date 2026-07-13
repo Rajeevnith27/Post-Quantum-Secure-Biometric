@@ -427,7 +427,8 @@
                             <td>${(fp.fingerprint_confidence_at_enrollment * 100).toFixed(0)}%</td>
                             <td>${fp.enrollment_timestamp_human}</td>
                             <td>
-                                <button type="button" class="btn btn-danger" style="padding: 5px 10px; font-size: 0.8em; margin: 0;" onclick="deleteFingerprint('${fp.fingerprint_name}')">Delete</button>
+                                <button type="button" class="btn btn-warning" style="padding: 5px 10px; font-size: 0.8em; margin: 0; display: inline-block; width: auto;" onclick="tamperFingerprint('${fp.fingerprint_name}')">Simulate Tamper</button>
+                                <button type="button" class="btn btn-danger" style="padding: 5px 10px; font-size: 0.8em; margin: 0; display: inline-block; width: auto;" onclick="deleteFingerprint('${fp.fingerprint_name}')">Delete</button>
                             </td>
                         </tr>
                     `;
@@ -445,7 +446,7 @@
             .then(data => {
                 const tbody = document.getElementById('logs-tbody');
                 if (data.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">No logs recorded.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted);;">No logs recorded.</td></tr>`;
                     return;
                 }
                 tbody.innerHTML = '';
@@ -467,6 +468,21 @@
             .catch(err => {
                 document.getElementById('logs-tbody').innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--danger-color);">Error loading audit logs.</td></tr>`;
             });
+        }
+
+        // Simulate Database Tamper Ajax
+        function tamperFingerprint(name) {
+            if (confirm("Simulate Tamper/Restore: This will toggle the first byte of helper data for user '" + name + "'.\nClick OK to execute.")) {
+                fetch('/tamper_fingerprint/' + name, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    alert(data.message);
+                    loadTemplates();
+                })
+                .catch(err => {
+                    alert("Error communicating with server.");
+                });
+            }
         }
 
         // Delete Fingerprint Ajax
