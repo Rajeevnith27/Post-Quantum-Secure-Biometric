@@ -31,6 +31,7 @@ rsc = RSCodec(RS_ECC_SYMBOLS)
 
 # Instantiate the database
 db = BiometricDatabase()
+TEMPLATE_BACKUPS = {}
 
 # Serve static uploads
 @app.route('/uploads/<filename>')
@@ -484,24 +485,68 @@ def delete_fingerprint(fingerprint_name):
                                back_url='/',
                                back_text='View Dashboard')
 
-@app.route('/tamper_fingerprint/<string:fingerprint_name>', methods=['POST'])
-def tamper_fingerprint(fingerprint_name):
-    """Toggles helper data first byte to simulate tampering and self-healing restoration."""
-    template = db.get_fingerprint_template(fingerprint_name)
-    if not template:
-        return jsonify({"success": False, "error": f"Template '{fingerprint_name}' not found."}), 404
-        
-    helper_data = bytearray(template['helper_data'])
-    # Toggle first byte with XOR 0x01
-    helper_data[0] ^= 0x01
-    updated_helper = bytes(helper_data)
+@app.route('/api/tamper', methods=['POST'])
+def api_tamper():
+    """Simulates database attack vectors on helper_data, verification_hash, or PQC keys."""
+    data = request.json or {}
+    username = data.get('username')
+    attack_type = data.get('attack_type')
     
+    template = db.get_fingerprint_template(username)
+    if not template:
+        return jsonify({"success": False, "error": "User profile not found."}), 404
+        
+    # Backup original values before tampering
+    if username not in TEMPLATE_BACKUPS:
+        TEMPLATE_BACKUPS[username] = {
+            'helper_data': template['helper_data'],
+            'verification_hash': template['verification_hash'],
+            'pqc_public_key': template['pqc_public_key'],
+            'pqc_private_key': template['pqc_private_key']
+        }
+        
     try:
-        db._execute("UPDATE fingerprints SET helper_data = ? WHERE LOWER(fingerprint_name) = LOWER(?)",
-                    (db._binary(updated_helper), fingerprint_name))
+        if attack_type == 'helper':
+            h = bytearray(template['helper_data'])
+            # Corrupt the first 30 bytes of helper data (exceeds correction bounds)
+            for i in range(min(len(h), 31)):
+                h[i] ^= 0xFF
+            db._execute("UPDATE fingerprints SET helper_data = ? WHERE LOWER(fingerprint_name) = LOWER(?)",
+                        (db._binary(bytes(h)), username))
+        elif attack_type == 'hash':
+            v = bytearray(template['verification_hash'])
+            v[0] ^= 0xFF
+            db._execute("UPDATE fingerprints SET verification_hash = ? WHERE LOWER(fingerprint_name) = LOWER(?)",
+                        (db._binary(bytes(v)), username))
+        elif attack_type == 'pqc':
+            pk = bytearray(template['pqc_public_key'])
+            pk[0] ^= 0xFF
+            db._execute("UPDATE fingerprints SET pqc_public_key = ? WHERE LOWER(fingerprint_name) = LOWER(?)",
+                        (db._binary(bytes(pk)), username))
         db.conn.commit()
-        db.add_auth_log(fingerprint_name, False, 0.0, 0.0, "Template helper data modified/toggled (Tamper/Restore Simulation).")
-        return jsonify({"success": True, "message": f"Successfully toggled helper data for user '{fingerprint_name}'. Go to scanner tab to test!"})
+        db.add_auth_log(username, False, 0.0, 0.0, f"DATABASE ATTACKED: Tampered {attack_type} vector.")
+        return jsonify({"success": True, "message": f"Successfully simulated '{attack_type}' database corruption attack."})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/restore', methods=['POST'])
+def api_restore():
+    """Restores database records back to original valid states."""
+    data = request.json or {}
+    username = data.get('username')
+    
+    if username not in TEMPLATE_BACKUPS:
+        return jsonify({"success": False, "error": "No backup found. Template is already clean."}), 400
+        
+    backup = TEMPLATE_BACKUPS[username]
+    try:
+        db._execute("UPDATE fingerprints SET helper_data = ?, verification_hash = ?, pqc_public_key = ?, pqc_private_key = ? WHERE LOWER(fingerprint_name) = LOWER(?)",
+                    (db._binary(backup['helper_data']), db._binary(backup['verification_hash']),
+                     db._binary(backup['pqc_public_key']), db._binary(backup['pqc_private_key']), username))
+        db.conn.commit()
+        del TEMPLATE_BACKUPS[username]
+        db.add_auth_log(username, True, 0.0, 0.0, "Database integrity restored. Template healed.")
+        return jsonify({"success": True, "message": "Successfully restored template integrity."})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 

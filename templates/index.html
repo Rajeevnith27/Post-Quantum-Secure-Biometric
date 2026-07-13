@@ -14,6 +14,7 @@
             <button class="tab-btn" onclick="switchTab('templates-list'); loadTemplates();">👥 Enrolled Users</button>
             <button class="tab-btn" onclick="switchTab('logs-list'); loadLogs();">📊 Audit Logs</button>
             <button class="tab-btn" onclick="switchTab('management')">🛠️ System Config</button>
+            <button class="tab-btn" onclick="switchTab('tamper-lab'); populateTamperProfiles();">🔒 Tamper Lab</button>
         </div>
 
         <!-- TAB 1: BIOMETRIC SCANNER -->
@@ -213,6 +214,41 @@
                     This action will **completely wipe the SQLite database**, deleting all enrolled fingerprint templates, PQC cryptographic key pairs, and authentication audit logs. This cannot be undone.
                 </p>
                 <button type="button" class="btn btn-danger" onclick="resetDatabase()">Wipe Database & Reset System</button>
+            </div>
+        </div>
+
+        <!-- TAB 5: TAMPER LAB -->
+        <div id="tab-tamper-lab" class="tab-content">
+            <div class="section info message-box">
+                <h3 style="border-bottom:none; margin-bottom:0; padding-bottom:0; color:#FFE082;">🔒 Database Security & Integrity Simulator</h3>
+                <p style="margin:8px 0 0 0; font-size:0.9em;">
+                    Even if a hacker intercepts or gains root access to modify your biometric database templates in transit or storage, 
+                    the mathematical structures of the **Fuzzy Extractor** and **ML-KEM-768** will prevent the tampered templates from completing key agreement.
+                </p>
+            </div>
+
+            <div class="section">
+                <h3>🧪 Attack Sandbox</h3>
+                <label for="tamper-profile" style="font-size:0.9em; font-weight:600; color:var(--text-muted);">1. Select Target Profile:</label>
+                <select id="tamper-profile" class="input-field" style="margin-top:5px; margin-bottom:20px;">
+                    <option value="">-- No Users Enrolled --</option>
+                </select>
+
+                <label style="font-size:0.9em; font-weight:600; color:var(--text-muted);">2. Execute Simulated Database Modification Attack:</label>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top:10px;">
+                    <button type="button" class="btn btn-danger" style="font-size:0.9em;" onclick="executeAttack('helper')">⚠️ Attack Helper Data (P)</button>
+                    <button type="button" class="btn btn-danger" style="font-size:0.9em;" onclick="executeAttack('hash')">⚠️ Attack Verification Hash (v)</button>
+                    <button type="button" class="btn btn-danger" style="font-size:0.9em;" onclick="executeAttack('pqc')">⚠️ Attack PQC Public Key</button>
+                </div>
+
+                <div style="margin-top: 25px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                    <div style="font-weight:600; color:var(--accent-color); font-size:0.9em; margin-bottom:5px;">🛡️ Attack Status Board:</div>
+                    <div id="tamper-status-log" style="font-family: monospace; font-size: 0.85em; color: var(--text-muted); line-height: 1.5; white-space: pre-wrap;">
+Idle. Please select an enrolled profile and execute an attack vector to begin.
+                    </div>
+                </div>
+
+                <button type="button" class="btn btn-success" style="margin-top:20px; font-size:1em;" onclick="restoreIntegrity()">✅ Restore Integrity (Heal Database)</button>
             </div>
         </div>
 
@@ -427,8 +463,7 @@
                             <td>${(fp.fingerprint_confidence_at_enrollment * 100).toFixed(0)}%</td>
                             <td>${fp.enrollment_timestamp_human}</td>
                             <td>
-                                <button type="button" class="btn btn-warning" style="padding: 5px 10px; font-size: 0.8em; margin: 0; display: inline-block; width: auto;" onclick="tamperFingerprint('${fp.fingerprint_name}')">Simulate Tamper</button>
-                                <button type="button" class="btn btn-danger" style="padding: 5px 10px; font-size: 0.8em; margin: 0; display: inline-block; width: auto;" onclick="deleteFingerprint('${fp.fingerprint_name}')">Delete</button>
+                                <button type="button" class="btn btn-danger" style="padding: 5px 10px; font-size: 0.8em; margin: 0;" onclick="deleteFingerprint('${fp.fingerprint_name}')">Delete</button>
                             </td>
                         </tr>
                     `;
@@ -470,19 +505,84 @@
             });
         }
 
-        // Simulate Database Tamper Ajax
-        function tamperFingerprint(name) {
-            if (confirm("Simulate Tamper/Restore: This will toggle the first byte of helper data for user '" + name + "'.\nClick OK to execute.")) {
-                fetch('/tamper_fingerprint/' + name, { method: 'POST' })
-                .then(res => res.json())
-                .then(data => {
-                    alert(data.message);
-                    loadTemplates();
-                })
-                .catch(err => {
-                    alert("Error communicating with server.");
+        // Populate profiles list for the Tamper Sandbox dropdown
+        function populateTamperProfiles() {
+            fetch('/fingerprints')
+            .then(res => res.json())
+            .then(data => {
+                const select = document.getElementById('tamper-profile');
+                if (data.length === 0) {
+                    select.innerHTML = '<option value="">-- No Users Enrolled --</option>';
+                    return;
+                }
+                select.innerHTML = '<option value="">-- Select Target User --</option>';
+                data.forEach(fp => {
+                    select.innerHTML += `<option value="${fp.fingerprint_name}">${fp.fingerprint_name}</option>`;
                 });
+            })
+            .catch(err => {
+                console.error("Error loading profiles:", err);
+            });
+        }
+
+        // Execute Attack on Selected Profile
+        function executeAttack(attackType) {
+            const username = document.getElementById('tamper-profile').value;
+            const logElement = document.getElementById('tamper-status-log');
+            
+            if (!username) {
+                alert("Please select a target profile first.");
+                return;
             }
+            
+            logElement.innerHTML = `[SIMULATION] Launching database attack against user '${username}'...\n[SIMULATION] Injecting payload to corrupt ${attackType.toUpperCase()} record...\n`;
+            
+            fetch('/api/tamper', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: username, attack_type: attackType })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    logElement.innerHTML += `[SUCCESS] Database corrupted successfully!\n[INFO] Modified: ${attackType.toUpperCase()} values inside the record.\n[ACTION Required] Go to the "Biometric Scanner" tab and attempt to authenticate user '${username}'.\n[RESULT] Verification will fail due to cryptographic check boundaries.`;
+                } else {
+                    logElement.innerHTML += `[FAILED] Attack simulation failed: ${data.error}`;
+                }
+            })
+            .catch(err => {
+                logElement.innerHTML += `[ERROR] Network error during attack: ${err}`;
+            });
+        }
+
+        // Restore Integrity / Heal Database
+        function restoreIntegrity() {
+            const username = document.getElementById('tamper-profile').value;
+            const logElement = document.getElementById('tamper-status-log');
+            
+            if (!username) {
+                alert("Please select a profile to restore.");
+                return;
+            }
+            
+            logElement.innerHTML = `[INTEGRITY CHECK] Restoring cryptographic signature integrity for user '${username}'...\n`;
+            
+            fetch('/api/restore', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: username })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    logElement.innerHTML += `[SUCCESS] Database integrity restored successfully.\n[INFO] All templates reset to original valid values.\n[ACTION Required] Go to the "Biometric Scanner" tab and authenticate user '${username}'.\n[RESULT] Verification will succeed and PQC handshake will execute.`;
+                } else {
+                    logElement.innerHTML += `[FAILED] Healing failed: ${data.error}`;
+                }
+            })
+            .catch(err => {
+                logElement.innerHTML += `[ERROR] Network error during healing: ${err}`;
+            });
         }
 
         // Delete Fingerprint Ajax
