@@ -31,7 +31,6 @@ rsc = RSCodec(RS_ECC_SYMBOLS)
 
 # Instantiate the database
 db = BiometricDatabase()
-TEMPLATE_BACKUPS = {}
 
 # Serve static uploads
 @app.route('/uploads/<filename>')
@@ -485,26 +484,7 @@ def delete_fingerprint(fingerprint_name):
                                back_url='/',
                                back_text='View Dashboard')
 
-@app.route('/tamper_fingerprint/<string:fingerprint_name>', methods=['POST'])
-def tamper_fingerprint(fingerprint_name):
-    """Toggles helper data first byte to simulate tampering and self-healing restoration."""
-    template = db.get_fingerprint_template(fingerprint_name)
-    if not template:
-        return jsonify({"success": False, "error": f"Template '{fingerprint_name}' not found."}), 404
-        
-    helper_data = bytearray(template['helper_data'])
-    # Toggle first byte with XOR 0x01
-    helper_data[0] ^= 0x01
-    updated_helper = bytes(helper_data)
-    
-    try:
-        db._execute("UPDATE fingerprints SET helper_data = ? WHERE LOWER(fingerprint_name) = LOWER(?)",
-                    (db._binary(updated_helper), fingerprint_name))
-        db.conn.commit()
-        db.add_auth_log(fingerprint_name, False, 0.0, 0.0, "Template helper data modified/toggled (Tamper/Restore Simulation).")
-        return jsonify({"success": True, "message": f"Successfully toggled helper data for user '{fingerprint_name}'. Go to scanner tab to test!"})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+# Main execution block
 
 if __name__ == '__main__':
     import os
