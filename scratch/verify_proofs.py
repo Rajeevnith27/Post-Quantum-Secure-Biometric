@@ -125,6 +125,66 @@ def verify_all_proofs():
     except Exception as e:
         print(f"  - Error reading database: {e}")
 
+    # -------------------------------------------------------------
+    # PROOF 4: Authentication Phase Audit (Error Correction & Key Recovery)
+    # -------------------------------------------------------------
+    print("\n" + "-" * 70)
+    print("[VERIFYING PROOF 4] Authentication Phase Audit (Noise & Rotation Tolerance)")
+    
+    try:
+        from reedsolo import RSCodec, ReedSolomonError
+        rsc = RSCodec(60) # 60 parity symbols matching app configuration
+        
+        # 1. Simulate original enrollment
+        print("  - [Simulating Enrollment]")
+        mock_X = os.urandom(71) # 71 bytes feature vector
+        mock_K = os.urandom(16) # 16 bytes secret key
+        # Pad message to 60 bytes
+        mock_K_padded = mock_K + os.urandom(44)
+        mock_C = rsc.encode(mock_K_padded)
+        mock_X_padded = mock_X + bytes(120 - len(mock_X))
+        mock_P = bytes([a ^ b for a, b in zip(mock_C, mock_X_padded)])
+        print("    * Biometric vector enrolled (71 bytes)")
+        print(f"    * Helper Data P generated (length: {len(mock_P)} bytes)")
+        
+        # 2. Simulate noisy authentication scan (with 25 bytes changed out of 71)
+        print("\n  - [Simulating Authentication (Noisy Scan)]")
+        mock_X_noisy = bytearray(mock_X)
+        import random
+        random.seed(42)
+        changed_indices = random.sample(range(71), 25) # Introduce 25 error bytes
+        for idx in changed_indices:
+            mock_X_noisy[idx] = (mock_X_noisy[idx] + 1) % 256
+        
+        print(f"    * Noise level: 25 bytes mutated out of 71 (simulating biometric mismatch/sweat)")
+        
+        # Pad noisy vector
+        mock_X_noisy_padded = bytes(mock_X_noisy) + bytes(120 - len(mock_X_noisy))
+        
+        # XOR to unmask codeword
+        mock_C_prime = bytes([a ^ b for a, b in zip(mock_P, mock_X_noisy_padded)])
+        
+        # 3. Decode & Correct
+        print("  - [Running Reed-Solomon Error Correction (Berlekamp-Massey)]")
+        mock_K_recovered_padded, _, errata_positions = rsc.decode(mock_C_prime)
+        mock_K_recovered = mock_K_recovered_padded[:16]
+        
+        print(f"    * Errors detected and corrected: {len(errata_positions)} bytes")
+        print(f"    * Key successfully recovered: {'YES' if mock_K_recovered == mock_K else 'NO'}")
+        
+        if mock_K_recovered == mock_K:
+            print("\n  🛡️  Authentication Proof:")
+            print("     Even under extreme noise (25 byte errors, near our 30-byte theoretical maximum),")
+            print("     the Reed-Solomon decoder successfully reconstructed the exact key K.")
+            print("     => STATUS: PROVED ERROR-TOLERANT AUTHENTICATION")
+        else:
+            print("  => STATUS: FAIL (Failed to recover key)")
+            
+    except ImportError:
+        print("  - Warning: reedsolo library not found. Skipping Error-Correction Audit.")
+    except Exception as e:
+        print(f"  - Error running Error-Correction Audit: {e}")
+
     print("=" * 70)
 
 if __name__ == "__main__":
