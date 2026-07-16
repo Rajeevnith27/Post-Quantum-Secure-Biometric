@@ -1,26 +1,25 @@
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&family=Montserrat:wght@400;600;700&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
     :root {
-        --primary-color: #4CAF50;
-        --secondary-color: #2196F3;
-        --accent-color: #FFC107;
-        --danger-color: #f44336;
-        --pink-color: #E91E63;
-        --text-color: #F5F5F7;
-        --text-muted: #8E8E93;
+        --primary-color: #10B981;
+        --secondary-color: #6366F1;
+        --accent-color: #F59E0B;
+        --danger-color: #EF4444;
+        --text-color: #F1F5F9;
+        --text-muted: #94A3B8;
         --background-color: #0B0F19;
-        --card-background: rgba(17, 24, 39, 0.7);
-        --section-background: rgba(31, 41, 55, 0.5);
-        --input-background: rgba(17, 24, 39, 0.9);
-        --border-color: rgba(255, 255, 255, 0.08);
-        --border-focus: #2196F3;
-        --shadow-glow: rgba(33, 150, 243, 0.25);
-        --gradient-start: #0B0F19;
-        --gradient-end: #1F1A3A;
+        --card-background: rgba(15, 23, 42, 0.85);
+        --section-background: rgba(30, 41, 59, 0.5);
+        --input-background: rgba(15, 23, 42, 0.95);
+        --border-color: rgba(255, 255, 255, 0.06);
+        --border-focus: #6366F1;
+        --shadow-glow: rgba(99, 102, 241, 0.2);
+        --gradient-start: #0B132B;
+        --gradient-end: #1C2541;
     }
     
     body {
-        font-family: 'Roboto', 'Montserrat', sans-serif;
+        font-family: 'Inter', sans-serif;
         margin: 0;
         padding: 20px;
         background: radial-gradient(circle at top, var(--gradient-end) 0%, var(--gradient-start) 100%);
@@ -47,22 +46,22 @@
     }
     
     h1, h2, h3 {
-        font-family: 'Montserrat', sans-serif;
+        font-family: 'Inter', sans-serif;
         font-weight: 700;
-        letter-spacing: 0.5px;
+        letter-spacing: -0.5px;
     }
 
     h1 {
         color: #FFFFFF;
         text-align: center;
         margin-bottom: 30px;
-        text-shadow: 0 0 15px rgba(33, 150, 243, 0.4);
+        text-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
     }
     
     /* Tabs Layout */
     .tabs-nav {
         display: flex;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         margin-bottom: 30px;
         gap: 5px;
     }
@@ -72,7 +71,7 @@
         border: none;
         color: var(--text-muted);
         font-weight: 600;
-        font-family: 'Montserrat', sans-serif;
+        font-family: 'Inter', sans-serif;
         cursor: pointer;
         border-bottom: 3px solid transparent;
         transition: all 0.3s ease;
@@ -84,7 +83,7 @@
     .tab-btn.active {
         color: var(--secondary-color);
         border-bottom-color: var(--secondary-color);
-        text-shadow: 0 0 10px rgba(33, 150, 243, 0.3);
+        text-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
     }
     .tab-content {
         display: none;
@@ -184,18 +183,18 @@
         cursor: pointer;
         font-size: 1.05em;
         font-weight: 700;
-        font-family: 'Montserrat', sans-serif;
+        font-family: 'Inter', sans-serif;
         transition: all 0.3s ease;
         display: inline-block;
         width: 100%;
-        box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3);
+        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.2);
         box-sizing: border-box;
         text-align: center;
         text-decoration: none;
     }
     .btn:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(33, 150, 243, 0.5);
+        box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
     }
     .btn:active {
         transform: translateY(0);
@@ -260,7 +259,7 @@
         width: 100px;
         height: 100px;
         border-radius: 50%;
-        background: radial-gradient(circle, rgba(33, 150, 243, 0.15) 0%, transparent 70%);
+        background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
         animation: pulse 2s infinite alternate;
     }
     .scanner-line {
@@ -288,7 +287,7 @@
         display: block;
     }
     .scanner-status-text {
-        font-family: 'Montserrat', sans-serif;
+        font-family: 'Inter', sans-serif;
         font-size: 0.85em;
         color: var(--text-muted);
         margin-top: 10px;
@@ -345,7 +344,7 @@
         background-color: rgba(0, 0, 0, 0.4);
         color: #FFFFFF;
         font-weight: 600;
-        font-family: 'Montserrat', sans-serif;
+        font-family: 'Inter', sans-serif;
     }
     tr:last-child td {
         border-bottom: none;
@@ -415,7 +414,7 @@
         background: rgba(0, 0, 0, 0.3);
         border: none;
         color: var(--text-muted);
-        font-family: 'Montserrat', sans-serif;
+        font-family: 'Inter', sans-serif;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.3s ease;
@@ -439,7 +438,7 @@
         border: 1px solid rgba(255, 255, 255, 0.1);
         border-radius: 8px;
         text-align: center;
-        font-family: 'Montserrat', sans-serif;
+        font-family: 'Inter', sans-serif;
         font-size: 0.85em;
         cursor: pointer;
         transition: all 0.2s ease;
@@ -447,7 +446,7 @@
     }
     .device-option.selected {
         border-color: var(--secondary-color);
-        background: rgba(33, 150, 243, 0.08);
+        background: rgba(99, 102, 241, 0.08);
         color: white;
         font-weight: bold;
     }
