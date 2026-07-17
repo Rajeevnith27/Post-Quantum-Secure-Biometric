@@ -1,21 +1,22 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
     :root {
-        --primary-color: #10B981;
-        --secondary-color: #66FCF1;
-        --accent-color: #45A29E;
+        --primary-color: #22C55E;
+        --secondary-color: #2563EB;
+        --accent-color: #0EA5E9;
         --danger-color: #EF4444;
-        --text-color: #C5C6C7;
-        --text-muted: #8E9CAE;
-        --background-color: #0B0C10;
-        --card-background: rgba(31, 40, 51, 0.85);
-        --section-background: rgba(11, 12, 16, 0.6);
-        --input-background: rgba(11, 12, 16, 0.95);
-        --border-color: rgba(102, 252, 241, 0.08);
-        --border-focus: #66FCF1;
-        --shadow-glow: rgba(102, 252, 241, 0.2);
-        --gradient-start: #0B0C10;
-        --gradient-end: #1F2833;
+        --warning-color: #F59E0B;
+        --text-color: #F8FAFC;
+        --text-muted: #94A3B8;
+        --background-color: #0F172A;
+        --card-background: rgba(30, 41, 59, 0.85);
+        --section-background: rgba(15, 23, 42, 0.5);
+        --input-background: rgba(15, 23, 42, 0.95);
+        --border-color: rgba(255, 255, 255, 0.05);
+        --border-focus: #0EA5E9;
+        --shadow-glow: rgba(14, 165, 233, 0.2);
+        --gradient-start: #0F172A;
+        --gradient-end: #1E293B;
     }
     
     body {
@@ -55,7 +56,7 @@
         color: #FFFFFF;
         text-align: center;
         margin-bottom: 30px;
-        text-shadow: 0 0 15px rgba(102, 252, 241, 0.3);
+        text-shadow: 0 0 15px rgba(14, 165, 233, 0.3);
     }
     
     /* Tabs Layout */
@@ -83,7 +84,7 @@
     .tab-btn.active {
         color: var(--secondary-color);
         border-bottom-color: var(--secondary-color);
-        text-shadow: 0 0 10px rgba(102, 252, 241, 0.2);
+        text-shadow: 0 0 10px rgba(14, 165, 233, 0.2);
     }
     .tab-content {
         display: none;
@@ -177,7 +178,7 @@
     .btn {
         padding: 14px 28px;
         background: linear-gradient(90deg, var(--secondary-color) 0%, var(--accent-color) 100%);
-        color: #0B0C10;
+        color: #FFFFFF;
         border: none;
         border-radius: 8px;
         cursor: pointer;
@@ -187,36 +188,36 @@
         transition: all 0.3s ease;
         display: inline-block;
         width: 100%;
-        box-shadow: 0 4px 15px rgba(102, 252, 241, 0.25);
+        box-shadow: 0 4px 15px rgba(37, 99, 235, 0.25);
         box-sizing: border-box;
         text-align: center;
         text-decoration: none;
     }
     .btn:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(102, 252, 241, 0.45);
+        box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
     }
     .btn:active {
         transform: translateY(0);
     }
     .btn-success {
-        background: linear-gradient(90deg, var(--primary-color) 0%, #388E3C 100%);
-        box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        background: linear-gradient(90deg, var(--primary-color) 0%, #16A34A 100%);
+        box-shadow: 0 4px 15px rgba(34, 197, 94, 0.25);
     }
     .btn-success:hover {
-        box-shadow: 0 6px 20px rgba(76, 175, 80, 0.5);
+        box-shadow: 0 6px 20px rgba(34, 197, 94, 0.45);
     }
     .btn-danger {
-        background: linear-gradient(90deg, var(--danger-color) 0%, #d32f2f 100%);
-        box-shadow: 0 4px 15px rgba(244, 67, 54, 0.3);
+        background: linear-gradient(90deg, var(--danger-color) 0%, #DC2626 100%);
+        box-shadow: 0 4px 15px rgba(239, 68, 68, 0.25);
     }
     .btn-danger:hover {
-        box-shadow: 0 6px 20px rgba(244, 67, 54, 0.5);
+        box-shadow: 0 6px 20px rgba(239, 68, 68, 0.45);
     }
     .btn-warning {
-        background: linear-gradient(90deg, var(--accent-color) 0%, #FF9800 100%);
-        color: #000;
-        box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+        background: linear-gradient(90deg, var(--warning-color) 0%, #D97706 100%);
+        color: #FFFFFF;
+        box-shadow: 0 4px 15px rgba(245, 158, 11, 0.25);
     }
     .btn-warning:hover {
         box-shadow: 0 6px 20px rgba(255, 193, 7, 0.5);
@@ -259,7 +260,7 @@
         width: 100px;
         height: 100px;
         border-radius: 50%;
-        background: radial-gradient(circle, rgba(102, 252, 241, 0.15) 0%, transparent 70%);
+        background: radial-gradient(circle, rgba(14, 165, 233, 0.15) 0%, transparent 70%);
         animation: pulse 2s infinite alternate;
     }
     .scanner-line {
@@ -446,7 +447,7 @@
     }
     .device-option.selected {
         border-color: var(--secondary-color);
-        background: rgba(102, 252, 241, 0.08);
+        background: rgba(14, 165, 233, 0.08);
         color: white;
         font-weight: bold;
     }
