@@ -5,13 +5,11 @@
 
 ## 1. System Architecture Overview
 
-This project implements a **Post-Quantum Secure Biometric Authentication Platform** combining **Fuzzy Extractor Cryptography** with **NIST FIPS 203 ML-KEM-768 (Post-Quantum Key Encapsulation)**. The system enables biometric enrollment and 1:1 / 1:N fingerprint authentication without storing raw biometric images, protecting templates against database compromise and quantum decryption attacks.
+This project implements a **Post-Quantum Secure Biometric Authentication Platform** combining **Fuzzy Extractor Cryptography** with **NIST FIPS 203 ML-KEM-768 (Post-Quantum Key Encapsulation)** and the **W3C Web Authentication API (WebAuthn)**. The system enables biometric enrollment and 1:1 / 1:N fingerprint authentication without storing raw biometric images, protecting templates against database compromise and quantum decryption attacks.
 
 ---
 
 ## 2. Module & File Usage Breakdown
-
-The codebase is organized into modular files, each handling a distinct layer of the application:
 
 | File / Directory | Category | Purpose & Description |
 | :--- | :--- | :--- |
@@ -24,7 +22,7 @@ The codebase is organized into modular files, each handling a distinct layer of 
 | **`scratch/pqc_audit_tool.py`** | Performance Benchmark | Performance benchmarking script measuring key sizes (Public key = 1184 bytes, Ciphertext = 1088 bytes, Shared secret = 32 bytes) and execution timings against FIPS 203 standards. |
 | **`scratch/tamper_test.py`** | Security Tester | Terminal simulator tool that mocks database template corruptions (XOR bit flips on helper data, hashes, and PQC keys) to verify that tampered records fail authentication securely. |
 | **`templates/base_style.html`** | UI Design System | Central CSS style system implementing the Slate & Sky-Blue palette (`#0F172A`, `#1E293B`, `#2563EB`, `#0EA5E9`), glassmorphic panels, button gradients, and responsive layout grids. |
-| **`templates/index.html`** | Main Dashboard | Primary user interface template. Features the tabbed navigation system (Biometric Scanner, Enrolled Users List, Audit Logs Table, and System Configuration). |
+| **`templates/index.html`** | Main Dashboard | Primary user interface template. Features the tabbed navigation system (Biometric Scanner, Enrolled Users List, Audit Logs Table, and System Configuration). Integrates WebAuthn browser APIs for hardware biometric device capture. |
 | **`templates/success.html`** | UI View | Authentication success page displaying handshake details, orientation alignment match, reconstructed keys ($R$), PQC ciphertext ($c_{pqc}$), and shared session secret ($K_{session}$). |
 | **`templates/error.html`** | UI View | Error rendering page displaying failure messages, rejection reasons, and back navigation controls. |
 | **`templates/delete_success.html`** | UI View | Confirmation view rendered upon successful user template deletion from the database. |
@@ -32,8 +30,6 @@ The codebase is organized into modular files, each handling a distinct layer of 
 ---
 
 ## 3. Third-Party Libraries & Dependencies
-
-Below is a complete list of 3rd party Python libraries used in the system, along with their purpose:
 
 | Library Name | Import Name | Purpose in Codebase |
 | :--- | :--- | :--- |
@@ -46,18 +42,17 @@ Below is a complete list of 3rd party Python libraries used in the system, along
 
 ---
 
-## 4. Third-Party APIs & External CDNs
+## 4. Third-Party APIs, Web Standards & CDNs
 
 | Service / API | Type | Purpose in Application |
 | :--- | :--- | :--- |
+| **W3C Web Authentication API (WebAuthn)** | Web Browser Standard API | JavaScript browser API (`navigator.credentials`) used to interface with hardware biometric authenticators (Touch ID, Face ID, Windows Hello, and FIDO2 keys). |
 | **Google Fonts API** | Web Font CDN | Loads the **Inter** (`sans-serif`) and **JetBrains Mono** (`monospace`) typography stylesheets for UI layout rendering. |
 | **Render Cloud Environment API** | Infrastructure Hosting | Automatically injects the `DATABASE_URL` environment variable to switch the database driver from local SQLite to cloud PostgreSQL during deployment. |
 
 ---
 
 ## 5. Built-in Python Standard Libraries Used
-
-The following native Python standard libraries are utilized across the project:
 
 * **`os`**: File path management and environment variable retrieval (`os.environ.get`).
 * **`sqlite3`**: Default embedded database engine for offline local execution.
@@ -69,8 +64,6 @@ The following native Python standard libraries are utilized across the project:
 
 ---
 
-## 6. Copyright & Licensing Notice
+## 6. Copyright Notice
 
-```text
 © 2026 Rajeev Ranjan, NIT Hamirpur. All Rights Reserved.
-```
